@@ -1,0 +1,60 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-app
+  labels:
+    app: app
+spec:
+  strategy:
+   type: RollingUpdate
+   rollingUpdate:
+     maxSurge: 1
+     maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: diplom-app
+        image: tourk/diplom-app:__VERSION__
+        imagePullPolicy: Always
+        ports:
+          - containerPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: diplom-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: app
+  ingress:
+  - from:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - port: 80
+      protocol: TCP
+  policyTypes:
+  - Ingress
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: diplom-svc
+spec:
+  selector:
+    app: app
+  ports:
+  - name: app-http
+    protocol: TCP
+    port: 80
+    nodePort: 31080
+    targetPort: 80
+  type: NodePort

@@ -1,0 +1,26 @@
+stages:
+  - build
+  - deploy
+build:
+  image:
+    name: gcr.io/kaniko-project/executor:v1.9.0-debug
+    entrypoint: [""]
+  before_script:
+    - AUTH=$(echo -n ${DOCKER_HUB_USER}:${DOCKER_HUB_PASSWORD} | base64)
+    - cp -f "${CI_PROJECT_DIR}/config.json" /kaniko/.docker/config.json
+    - sed -i "s/PLACE_HOLDER/$AUTH/" /kaniko/.docker/config.json
+  stage: build
+  script:
+    - |
+      /kaniko/executor --context "${CI_PROJECT_DIR}" --dockerfile "${CI_PROJECT_DIR}/Dockerfile" --destination "${DOCKER_HUB_USER}/${DOCKER_IMAGE_NAME}:${CI_COMMIT_REF_NAME}"
+deploy:
+  image:
+    name: bitnami/kubectl:latest
+  stage: deploy
+  script:
+    - sed -i "s/__VERSION__/${CI_COMMIT_REF_NAME}/" app.yaml
+    - kubectl config get-contexts
+    - kubectl config use-context tourk/mydiplom:agent
+    - kubectl get pods -n default
+    - kubectl apply -f app.yaml -n default
+    - kubectl rollout restart deployment deployment-app -n default
